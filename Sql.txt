@@ -1,0 +1,63 @@
+DECLARE @Counter INT = 1
+DECLARE @RowCount INT = (
+		SELECT TOP 1 RowNum
+		FROM (
+			SELECT *
+				,ROW_NUMBER() OVER (
+					ORDER BY c1 DESC
+					) AS RowNum
+			FROM (
+				SELECT DISTINCT c1
+				FROM Vaccine
+				) AS a1
+			) AS a2
+		ORDER BY RowNum DESC
+		)
+
+WHILE @Counter <= @RowCount
+BEGIN
+	DECLARE @Country NVARCHAR(100) = (
+			SELECT TOP 1 RowNum
+			FROM (
+				SELECT *
+					,ROW_NUMBER() OVER (
+						ORDER BY c1 DESC
+						) AS RowNum
+				FROM (
+					SELECT DISTINCT c1
+					FROM Vaccine
+					) AS a1
+				) AS a2
+			WHERE RowNum = @Counter
+			)
+	DECLARE @Median FLOAT = (
+			SELECT (
+					(
+						SELECT MAX(c3)
+						FROM (
+							SELECT TOP 50 PERCENT c3
+							FROM Vaccine
+							WHERE c1 = @Country
+								AND c3 != ''
+							ORDER BY c3
+							) AS bottomSide
+						) + (
+						SELECT MIN(c3)
+						FROM (
+							SELECT TOP 50 PERCENT c3
+							FROM Vaccine
+							WHERE c1 = @Country
+								AND c3 != ''
+							ORDER BY c3 DESC
+							) AS topSide
+						)
+					) / 2 AS Median
+			)
+
+	UPDATE Vaccine
+	SET c3 = @Median
+	WHERE c3 = ''
+		AND c1 = @Country
+
+	SET @Counter = @Counter + 1
+END
